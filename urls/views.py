@@ -19,12 +19,16 @@ class ShortURLListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         short_code = serializer.validated_data.get('short_code')
-        if not short_code:
+        custom = False 
+
+        if short_code:
+            custom = True
+        else:
             while True:
                 short_code = generate_short_code()
                 if not ShortURL.objects.filter(short_code=short_code).exists():
                     break
-        serializer.save(user=self.request.user, short_code=short_code)
+        serializer.save(user=self.request.user, short_code=short_code,custom_code=custom)
 
 
 class ShortURLDetailView(generics.RetrieveUpdateDestroyAPIView):

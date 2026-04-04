@@ -8,10 +8,15 @@ class ShortURLSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ShortURL
-        fields = ('id', 'original_url', 'short_code', 'expires_at', 'click_count', 'created_at')
-        read_only_fields = ('id', 'click_count', 'created_at')
+        fields = ('id', 'original_url', 'short_code', 'expires_at', 'click_count', 'created_at', 'custom_code')
+        read_only_fields = ('id', 'click_count', 'created_at', 'custom_code')
 
     def validate_expires_at(self, value):
         if value and value < timezone.now():
             raise serializers.ValidationError("Expiry date must be in the future.")
+        return value
+
+    def validate_short_code(self, value):
+        if ShortURL.objects.filter(short_code=value).exists():
+            raise serializers.ValidationError("This short code is already taken. Please choose another.")
         return value

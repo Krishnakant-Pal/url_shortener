@@ -1,9 +1,12 @@
 import string
 import random
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from .models import ShortURL
 from .serializers import ShortURLSerializer
-
+from django.utils import timezone
+from django.core.cache import cache
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
 def generate_short_code():
     characters = string.ascii_letters + string.digits
@@ -37,3 +40,29 @@ class ShortURLDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return ShortURL.objects.filter(user=self.request.user)
+
+
+class RedirectView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, short_code):
+        cache_key = f"url_{short_code}"
+        original_url = cache.get(cache_key)
+
+        if not original_url:
+          
+            try:
+                url_obj = ShortURL.objects.get(short_code=short_code)
+            except ShortURL.DoesNotExist:
+                return Response({'error': 'URL not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Check if link has expired
+            if url_obj.expires_at and url_obj.expires_at < timezone.now():
+                return Response({'error': 'This link has expired.'}, status=status.HTTP_404_NOT_FOUND)
+
+            original_url = url_obj.original_url
+
+            # Store in Redis for 1 hour 
+            cache.set(cache_key, original_url, timeout=3600)
+
+        return Response({'url': original_url}, status=status.HTTP_200_OK)

@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from .tasks import track_click
 
 def generate_short_code():
     characters = string.ascii_letters + string.digits
@@ -64,5 +65,9 @@ class RedirectView(APIView):
 
             # Store in Redis for 1 hour 
             cache.set(cache_key, original_url, timeout=3600)
+            
+          
+        # track click in background
+        track_click.delay(short_code)
 
         return Response({'url': original_url}, status=status.HTTP_200_OK)

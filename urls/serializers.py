@@ -20,3 +20,12 @@ class ShortURLSerializer(serializers.ModelSerializer):
         if ShortURL.objects.filter(short_code=value).exists():
             raise serializers.ValidationError("This short code is already taken. Please choose another.")
         return value
+
+class URLAnalyticsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShortURL
+        fields = (
+            'id', 'original_url', 'short_code',
+            'custom_code', 'expires_at', 'click_count', 'created_at'
+        )
+        read_only_fields = fields

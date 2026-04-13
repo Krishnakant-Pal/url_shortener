@@ -2,12 +2,13 @@ import string
 import random
 from rest_framework import generics, permissions, status
 from .models import ShortURL
-from .serializers import ShortURLSerializer
+from .serializers import ShortURLSerializer,URLAnalyticsSerializer
 from django.utils import timezone
 from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .tasks import track_click
+from django.db.models import Sum
 
 def generate_short_code():
     characters = string.ascii_letters + string.digits
@@ -71,3 +72,30 @@ class RedirectView(APIView):
         track_click.delay(short_code)
 
         return Response({'url': original_url}, status=status.HTTP_200_OK)
+
+class URLAnalyticsView(generics.RetrieveAPIView):
+    # Returns stats for a single short URL by short_code
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = URLAnalyticsSerializer
+
+    def get_object(self):
+        return generics.get_object_or_404(
+            ShortURL,
+            short_code=self.kwargs['short_code'],
+            user=self.request.user  
+        )
+
+
+class SummaryView(APIView):
+    # Returns total URLs and total clicks for the logged in user
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        qs = ShortURL.objects.filter(user=request.user)
+        total_urls = qs.count()
+        total_clicks = qs.aggregate(total=Sum('click_count'))['total'] or 0
+
+        return Response({
+            'total_urls': total_urls,
+            'total_clicks': total_clicks,
+        })

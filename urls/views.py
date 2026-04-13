@@ -9,6 +9,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .tasks import track_click
 from django.db.models import Sum
+from rest_framework.throttling import UserRateThrottle
+
+class CreateURLThrottle(UserRateThrottle):
+    # Stricter limit specifically for creating short URLs
+    scope = 'create_url'
 
 def generate_short_code():
     characters = string.ascii_letters + string.digits
@@ -18,6 +23,7 @@ def generate_short_code():
 class ShortURLListCreateView(generics.ListCreateAPIView):
     serializer_class = ShortURLSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [CreateURLThrottle] 
 
     def get_queryset(self):
         return ShortURL.objects.filter(user=self.request.user)
